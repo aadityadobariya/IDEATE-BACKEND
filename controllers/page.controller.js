@@ -3,6 +3,7 @@ const prisma = new PrismaClient();
 
 const createPage = async (req, res) => {
   try {
+    const { id } = req.user;
     const { block } = req.body;
 
     if (!block) {
@@ -12,6 +13,7 @@ const createPage = async (req, res) => {
     const createBlock = await prisma.page.create({
       data: {
         block,
+        userId: [id],
       },
     });
 
@@ -20,17 +22,39 @@ const createPage = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
-const getPage = async (req, res) => {
-  try {
-    const { id } = req.params;
 
-    if (!id) {
+const getAllPages = async (req, res) => {
+  try {
+    const { id } = req.user;
+
+    const pages = await prisma.page.findMany({
+      where: {
+        userId: {
+          has: id,
+        },
+      },
+    });
+    return res.status(200).json(pages);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+const getPageById = async (req, res) => {
+  try {
+    const { pageId } = req.params;
+    const { id } = req.user;
+
+    if (!pageId) {
       return res.status(422).json({ error: "Provide an id." });
     }
 
     const page = await prisma.page.findUnique({
       where: {
-        id,
+        id: pageId,
+        userId: {
+          has: id,
+        },
       },
     });
 
@@ -44,6 +68,7 @@ const updatePage = async (req, res) => {
   try {
     const { id } = req.params;
     const { block } = req.body;
+    const { userId } = req.user;
 
     if (!id) {
       return res.status(422).json({ error: "Provide an id." });
@@ -56,6 +81,7 @@ const updatePage = async (req, res) => {
     const updatePage = await prisma.page.update({
       where: {
         id,
+        userId,
       },
       data: {
         block,
@@ -71,6 +97,7 @@ const updatePage = async (req, res) => {
 const deletePage = async (req, res) => {
   try {
     const { id } = req.params;
+    const { userId } = req.user;
 
     if (!id) {
       return res.status(422).json({ error: "Provide an id." });
@@ -80,6 +107,7 @@ const deletePage = async (req, res) => {
     const existingPage = await prisma.page.findUnique({
       where: {
         id,
+        userId,
       },
     });
 
@@ -103,7 +131,8 @@ const deletePage = async (req, res) => {
 
 module.exports = {
   createPage,
-  getPage,
+  getPageById,
+  getAllPages,
   updatePage,
   deletePage,
 };
